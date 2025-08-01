@@ -1,0 +1,95 @@
+import boto3
+from pydub import AudioSegment
+
+# AWS認証情報（ここの2か所のACCESS KEYとSECRET Keyを自分のものに変更する！）
+aws_access_key_id = "YOUR_AWS_ACCESS_KEY"
+aws_secret_access_key = "YOUR_AWS_SECRET_KEY"
+region_name = "ap-northeast-1"
+
+# Pollyクライアント
+polly = boto3.client(
+    "polly",
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key,
+    region_name=region_name
+)
+
+# 各発話のSSML（日本人中学生の拙い英語をfilled pausesやbreakで強調）
+female_1 = '''
+<speak>
+<prosody rate="85%">
+Uh, <break time="200ms"/> so, ah, <break time="300ms"/> Mr. Brown, have you, like, thought about what, <break time="200ms"/> um, we should do for the school festival? <break time="400ms"/>
+I mean, well, <break time="300ms"/> last year’s food stand was, ah, pretty fun, <break time="300ms"/> but, um, maybe we could, like, try something new this time?
+</prosody>
+</speak>
+'''
+
+male_1 = '''
+<speak>
+<prosody rate="140%">
+That’s a good question, Anna. I’ve actually been thinking a science magic show could be interesting this year.
+It’s both educational and entertaining, and I think everyone could enjoy it. What do you think?
+</prosody>
+</speak>
+'''
+
+female_2 = '''
+<speak>
+<prosody rate="85%">
+Oh, ah, <break time="200ms"/> wow, a magic show? <break time="300ms"/> That sounds, um, really cool! <break time="300ms"/>
+But, uh, do you think, like, we can prepare everything in time? <break time="400ms"/>
+I mean, well, <break time="300ms"/> I’m kind of nervous about performing in front of people, you know?
+</prosody>
+</speak>
+'''
+
+male_2 = '''
+<speak>
+<prosody rate="140%">
+Don’t worry, Anna. We can work as a team, and I’ll help you with the practice.
+I can take care of the more difficult parts. If you’d like, you could do some of the simpler tricks or help with the explanations.
+</prosody>
+</speak>
+'''
+
+female_3 = '''
+<speak>
+<prosody rate="85%">
+Ah, well, <break time="200ms"/> okay, I think that, um, sounds good! <break time="200ms"/>
+I, ah, want to try. <break time="300ms"/>
+So, uh, let’s do the magic show for the festival!
+</prosody>
+</speak>
+'''
+
+# 発話リストと話者（PollyのVoiceId）
+script = [
+    (female_1, "Joanna"),   # 女性中学生
+    (male_1, "Matthew"),    # ALT男性
+    (female_2, "Joanna"),
+    (male_2, "Matthew"),
+    (female_3, "Joanna")
+]
+
+audio_segments = []
+
+for idx, (ssml, voice) in enumerate(script):
+    response = polly.synthesize_speech(
+        Text=ssml,
+        TextType="ssml",
+        OutputFormat="mp3",
+        VoiceId=voice
+    )
+    temp_filename = f"temp_{idx}.mp3"
+    with open(temp_filename, "wb") as f:
+        f.write(response["AudioStream"].read())
+    # 音声読み込み
+    audio = AudioSegment.from_mp3(temp_filename)
+    audio_segments.append(audio)
+    
+# 全部結合
+final_audio = sum(audio_segments[1:], audio_segments[0])
+
+# mp3で保存
+final_audio.export("dialogue_final.mp3", format="mp3")
+print("1つのmp3ファイル（dialogue_final.mp3）が作成されました。")
