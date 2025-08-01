@@ -1,0 +1,50 @@
+import boto3
+from pydub import AudioSegment
+
+# AWS認証情報
+aws_access_key_id = "          "
+aws_secret_access_key = "          "
+region_name = "          "
+
+# Pollyクライアント
+polly = boto3.client(
+    "polly",
+    aws_access_key_id=aws_access_key_id,
+    aws_secret_access_key=aws_secret_access_key,
+    region_name=region_name
+)
+
+ssml_list = [
+    # (SSML, VoiceId)
+    ('''<speak><prosody rate="90%">Mr. Brown, have you thought about what we should do for the school festival? Last year’s food stand was pretty fun, but maybe we could try something new this time?</prosody></speak>''', "Joanna"),
+    ('''<speak><prosody rate="110%">That's a good question, Anna. I've actually been thinking a science magic show could be interesting this year. It's both educational and entertaining, and I think everyone could enjoy it. What do you think?</prosody></speak>''', "Matthew"),
+    ('''<speak><prosody rate="90%">Oh, a magic show? That sounds really cool! But do you think we can prepare everything in time? I'm kind of nervous about performing in front of people, you know?</prosody></speak>''', "Joanna"),
+    ('''<speak><prosody rate="110%">Don't worry, Anna. We can work as a team, and I'll help you with the practice. I can take care of the more difficult parts. If you'd like, you could do some of the simpler tricks or help with the explanations.</prosody></speak>''', "Matthew"),
+    ('''<speak><prosody rate="90%">Okay, I think that sounds good! I want to try. So let's do the magic show for the festival!</prosody></speak>''', "Joanna")
+]
+
+audio_segments = []
+
+for idx, (ssml, voice) in enumerate(ssml_list):
+    response = polly.synthesize_speech(
+        Text=ssml,
+        TextType="ssml",
+        OutputFormat="mp3",
+        VoiceId=voice
+    )
+    temp_filename = f"temp_{idx}.mp3"
+    with open(temp_filename, "wb") as f:
+        f.write(response["AudioStream"].read())
+    audio = AudioSegment.from_mp3(temp_filename)
+    audio_segments.append(audio)
+
+# 全部結合
+final_audio = audio_segments[0]
+for seg in audio_segments[1:]:
+    final_audio += AudioSegment.silent(duration=600)  # 各ターンの間に0.6秒の空白
+    final_audio += seg
+
+# mp3で保存
+final_audio.export("dialogue_final.mp3", format="mp3")
+print("1つのmp3ファイル（dialogue_final2.mp3）が作成されました。")
+
